@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>BEKI AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-twilight.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.17/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-html.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* --- color variables (dark theme primary) --- */
+        :root {
+            --bg-color: #0b1020;
+            --panel-color: rgba(20, 24, 35, 0.6);
+            --text-color: #e6eef8;
+            --accent-color: #9b5cf6;
+            --secondary-accent: #f472b6;
+            --neon-glow: 0 0 6px var(--accent-color), 0 0 12px rgba(155,92,246,0.25);
+            --panel-border: 1px solid rgba(155,92,246,0.18);
+            --chat-bg: rgba(22, 26, 40, 0.8);
+            --muted: #94a3b8;
+        }
+        .light-mode {
+            --bg-color: #f1f5f9;
+            --panel-color: rgba(255,255,255,0.9);
+            --text-color: #0f172a;
+            --accent-color: #3b82f6;
+            --secondary-accent: #a3e635;
+            --neon-glow: 0 0 5px var(--accent-color);
+            --panel-border: 1px solid rgba(59, 130, 246, 0.2);
+            --chat-bg: rgba(255,255,255,0.95);
+            --muted: #4b5563;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.25s ease, color 0.25s ease;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        .glassmorphism {
+            background: var(--panel-color);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: var(--panel-border);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+            transition: all 0.25s ease;
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(155,92,246,0.35), rgba(244,114,182,0.25));
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        #main-content, #header-nav {
+            transition: margin-left 0.45s cubic-bezier(.2,.8,.2,1);
+        }
+
+        .sidebar-closed #sidebar-chat {
+             transform: translateX(-100%);
+        }
+
+        .sidebar-open #main-content, .sidebar-open #header-nav {
+             margin-left: 20rem; /* sidebar width */
+        }
+
+        .page {
+            display: none;
+            flex-grow: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.45s cubic-bezier(.2,.8,.2,1), opacity 0.3s ease;
+            transform: translateX(100%);
+            opacity: 0;
+            z-index: 1;
+        }
+        .page.active { 
+            display: flex; 
+            flex-direction: column; 
+            transform: translateX(0); 
+            opacity:1; 
+            z-index:2; 
+        }
+
+        .fade-in { opacity: 0; transform: translateY(8px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .scrolled-into-view { opacity:1; transform: translateY(0); }
+
+        .btn-gradient { background-image: linear-gradient(45deg, var(--accent-color), var(--secondary-accent)); box-shadow: 0 4px 14px rgba(0,0,0,0.35); transition: all 0.2s ease; }
+        .btn-gradient:hover { box-shadow: var(--neon-glow); transform: translateY(-2px); }
+
+        .modal { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity:0; transform: scale(.98);} to { opacity:1; transform: scale(1);} }
+
+        body.modal-open > #sidebar-chat, body.modal-open > #main-content {
+            filter: blur(5px);
+            pointer-events: none;
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            height: 100%;
+            max-height: calc(100vh - 220px);
+            padding-bottom: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 1rem;
+            border-radius: 1.2rem;
+            margin-bottom: 0.9rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .ai-bubble { background-color: var(--chat-bg); color: var(--text-color); border-bottom-left-radius: .4rem; }
+        .user-bubble { background: linear-gradient(90deg, rgba(155,92,246,0.9), rgba(244,114,182,0.9)); color: white; border-bottom-right-radius: .4rem; }
+
+        .typing-indicator span { display:inline-block; width:10px; height:10px; margin:0 2px; border-radius:50%; background:var(--accent-color); animation: bounce 1.4s infinite; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0);} 40% { transform: scale(1);} }
+
+        pre[class*="language-"] { padding:1rem; border-radius:8px; background: rgba(0,0,0,0.35); overflow-x:auto; font-size:0.9rem; color:var(--text-color); }
+
+        .action-button { background:transparent; border:none; cursor:pointer; padding:0.4rem; border-radius:8px; color:var(--muted); }
+        .action-button:hover { color:var(--text-color); background:rgba(255,255,255,0.03); }
+
+        #sidebar-chat { width:20rem; min-width:20rem; transition: transform 0.45s cubic-bezier(.2,.8,.2,1); }
+        .chat-history-item { padding:0.65rem 0.9rem; border-radius:8px; transition: background-color .15s ease, color .15s ease; color:var(--muted); }
+        .chat-history-item:hover { background: rgba(155,92,246,0.07); color:var(--text-color); }
+        .chat-history-item.active { background: linear-gradient(90deg, rgba(155,92,246,0.2), rgba(244,114,182,0.08)); color: white; box-shadow: var(--neon-glow); }
+
+        .feature-box {
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .feature-box:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--neon-glow);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-open #main-content, .sidebar-open #header-nav {
+                 margin-left: 0;
+            }
+            .sidebar-open #sidebar-chat {
+                transform: translateX(0%);
+            }
+             #sidebar-chat {
+                transform: translateX(-100%);
+            }
+        }
+
+        .auth-input { width: 100%; padding: 0.95rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); background: rgba(255,255,255,0.02); color: var(--text-color); outline: none; }
+        .auth-input::placeholder { color: rgba(255,255,255,0.45); }
+    </style>
+</head>
+<body class="sidebar-open">
+
+    <!-- Sidebar for Chat History -->
+    <aside id="sidebar-chat" class="fixed top-0 left-0 h-full glassmorphism z-40 p-6 flex flex-col pt-8">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">Chats</h2>
+            <div>
+                <button id="new-chat-btn" class="p-2 rounded-full glassmorphism hover:shadow-lg transition text-white" title="New Chat">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button id="close-sidebar-btn" class="p-2 rounded-full glassmorphism hover:shadow-lg transition text-white md:hidden" title="Close Sidebar">
+                     <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="relative mb-6">
+            <input type="text" id="chat-search" placeholder="Search chats..." class="w-full p-2 pl-10 rounded-full glassmorphism outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm" />
+            <i class="fas fa-search absolute left-4 top-3 text-gray-400"></i>
+        </div>
+
+        <div id="chat-history-list" class="flex-grow overflow-y-auto space-y-2 mb-6">
+            <!-- Chat history items will be added here -->
+        </div>
+
+        <div class="mt-auto pt-4 border-t border-gray-700">
+            <div id="user-info" class="flex items-center space-x-3 mb-4">
+                 <label for="avatar-upload" class="cursor-pointer">
+                    <img id="user-avatar" src="" class="w-10 h-10 rounded-full object-cover bg-gray-700">
+                </label>
+                <input type="file" id="avatar-upload" class="hidden" accept="image/*">
+                
+                <div class="flex-grow">
+                    <div class="flex items-center">
+                        <span id="user-id-display" class="block font-medium text-sm">Guest</span>
+                        <button id="edit-username-btn" class="ml-2 text-xs action-button opacity-50 hover:opacity-100">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                    </div>
+                    <span id="user-status" class="block text-xs" style="color:var(--muted)">Chat history saved locally</span>
+                </div>
+            </div>
+            <div class="flex flex-col space-y-2 mb-2">
+                <button id="export-all-btn" class="py-2 px-4 w-full rounded-full glassmorphism hover:shadow-lg transition text-sm">Export All Chats</button>
+                <button id="clear-all-btn" class="py-2 px-4 w-full rounded-full glassmorphism hover:shadow-lg transition text-sm text-red-400 hover:bg-red-500/10">Clear All Chats</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div id="main-content" class="flex-grow flex flex-col relative">
+
+        <!-- Header -->
+        <header id="header-nav" class="fixed top-0 left-0 w-full z-30 p-4 flex justify-between items-center glassmorphism">
+             <div class="flex items-center">
+                <button id="open-sidebar-btn" class="p-2 rounded-full hover:bg-white hover:bg-opacity-5 transition mr-4" title="Toggle Sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">BEKI AI</div>
+            </div>
+
+            <nav class="hidden md:flex items-center space-x-4">
+                <a href="#home" data-page="home-page" class="nav-link py-2 px-4 rounded-full glassmorphism hover:shadow-lg transition">Home</a>
+                <a href="#chat" data-page="chat-page" class="nav-link py-2 px-4 rounded-full glassmorphism hover:shadow-lg transition">Chat</a>
+                <a href="#features" data-page="features-page" class="nav-link py-2 px-4 rounded-full glassmorphism hover:shadow-lg transition">Features</a>
+                <a href="#about" data-page="about-page" class="nav-link py-2 px-4 rounded-full glassmorphism hover:shadow-lg transition">About</a>
+                <a href="#contact" data-page="contact-page" class="nav-link py-2 px-4 rounded-full glassmorphism hover:shadow-lg transition">Contact</a>
+            </nav>
+            <div class="flex items-center space-x-4">
+                <button id="toggle-theme-btn" class="p-2 rounded-full hover:bg-white hover:bg-opacity-5 transition" title="Toggle theme">
+                    <i class="fas fa-adjust"></i>
+                </button>
+                <button id="open-settings-btn" class="p-2 rounded-full hover:bg-white hover:bg-opacity-5 transition" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-grow pt-20">
+            <!-- Home Page -->
+            <section id="home-page" class="page active flex-col items-center justify-center text-center px-4">
+                <div class="fade-in">
+                    <h1 class="text-6xl font-extrabold mb-4" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;">BEKI AI</h1>
+                    <p class="text-xl max-w-2xl">Your personal AI assistant for everything. Chat, code, create, and explore with cutting-edge technology.</p>
+                    <div class="mt-8 space-x-4 flex justify-center">
+                        <a href="#chat" data-page="chat-page" class="nav-link py-3 px-6 rounded-full btn-gradient hover:shadow-lg transition">Start Chatting</a>
+                        <a href="#features" data-page="features-page" class="nav-link py-3 px-6 rounded-full glassmorphism hover:shadow-lg transition">Explore Features</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat Page -->
+            <section id="chat-page" class="page flex-col">
+                <h2 class="text-4xl font-bold mb-6 text-center fade-in" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;">Chat with BEKI</h2>
+
+                <div id="chat-area" class="flex-grow glassmorphism p-6 rounded-3xl chat-area">
+                    <!-- Chat messages will be dynamically added here -->
+                </div>
+
+                <div id="powered-by-gemini" class="text-center text-sm text-gray-500 mt-2 mb-4">Powered by Bereket</div>
+                <div id="error-container" class="text-red-400 text-center mt-2 hidden"></div>
+
+                <div class="mt-6 flex items-center space-x-4">
+                    <label class="cursor-pointer relative">
+                        <input type="file" id="file-upload" class="hidden" accept=".txt, .js, .py, .html, .css, .pdf, image/*">
+                        <div class="p-3 rounded-full glassmorphism hover:shadow-lg transition"><i class="fas fa-paperclip"></i></div>
+                    </label>
+
+                    <button id="mic-btn" class="p-3 rounded-full glassmorphism hover:shadow-lg transition" title="Start voice input"><i class="fas fa-microphone"></i></button>
+
+                    <input type="text" id="chat-input" placeholder="Ask BEKI anything..." class="flex-grow glassmorphism p-4 rounded-full outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+
+                    <button id="send-btn" class="p-3 rounded-full glassmorphism btn-gradient hover:shadow-lg transition" title="Send">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Features Page -->
+            <section id="features-page" class="page flex-col items-center justify-center">
+                <h2 class="text-4xl font-bold mb-8 text-center fade-in">Features</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-5xl fade-in">
+                    <div class="glassmorphism p-6 rounded-3xl feature-box">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-comments text-4xl mb-3" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                            <h3 class="text-xl font-semibold mb-2">Multi-purpose Chat</h3>
+                        </div>
+                        <p class="text-center">A versatile AI for all your questions, creative writing, and complex problem-solving. Get assistance with research, brainstorming, content creation, and more.</p>
+                    </div>
+                    <div class="glassmorphism p-6 rounded-3xl feature-box">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-code text-4xl mb-3" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                            <h3 class="text-xl font-semibold mb-2">Code Assistance</h3>
+                        </div>
+                        <p class="text-center">Write, debug, and learn to code with AI. Supports many languages including Python, JavaScript, HTML, CSS, and more. Get explanations and best practices.</p>
+                    </div>
+                    <div class="glassmorphism p-6 rounded-3xl feature-box">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-file-alt text-4xl mb-3" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                            <h3 class="text-xl font-semibold mb-2">File Analysis</h3>
+                        </div>
+                        <p class="text-center">Upload text files and images for analysis inside your chat. Extract information, summarize content, or get insights from your documents and images.</p>
+                    </div>
+                    <div class="glassmorphism p-6 rounded-3xl feature-box">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-brain text-4xl mb-3" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                            <h3 class="text-xl font-semibold mb-2">Advanced AI</h3>
+                        </div>
+                        <p class="text-center">Powered by the AI expert Mr.Bereket Mamuye, BEKI AI provides cutting-edge responses with deep understanding and contextual awareness for all your needs.</p>
+                    </div>
+                    <div class="glassmorphism p-6 rounded-3xl feature-box">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-history text-4xl mb-3" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                            <h3 class="text-xl font-semibold mb-2">Chat History</h3>
+                        </div>
+                        <p class="text-center">All your conversations are saved locally in your browser. Access your chat history anytime, even after closing the browser.</p>
+                    </div>
+                    <div class="glassmorphism p-6 rounded-3xl feature-box">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-shield-alt text-4xl mb-3" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                            <h3 class="text-xl font-semibold mb-2">Privacy Focused</h3>
+                        </div>
+                        <p class="text-center">Your data stays on your device. We don't store your conversations on our servers, ensuring complete privacy and security for your information.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- About Page -->
+            <section id="about-page" class="page flex-col items-center justify-center">
+                <h2 class="text-4xl font-bold mb-8 text-center fade-in">About BEKI AI</h2>
+                <div class="glassmorphism p-8 rounded-3xl max-w-4xl mx-auto fade-in">
+                    <div class="text-center mb-6">
+                        <div class="w-24 h-24 rounded-full glassmorphism flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-robot text-4xl" style="background:linear-gradient(90deg,#9b5cf6,#f472b6); -webkit-background-clip:text; color:transparent;"></i>
+                        </div>
+                        <h3 class="text-2xl font-semibold mb-2">Revolutionizing AI Assistance</h3>
+                    </div>
+                    
+                    <p class="mb-4">BEKI AI was born out of a desire to make advanced AI technology accessible and easy to use for everyone. Our mission is to democratize AI-powered assistance, providing cutting-edge technology to users worldwide without compromising on privacy or user experience.</p>
+                    
+                    <p class="mb-4">Founded in 2023, BEKI AI has quickly grown to become a trusted name in the AI assistant space. We continuously work to improve features and privacy, ensuring that our users have the best possible experience while maintaining complete control over their data.</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-6 mt-8">
+                        <div class="glassmorphism p-4 rounded-2xl">
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-lightbulb mr-2" style="color: #9b5cf6;"></i>
+                                Our Vision
+                            </h4>
+                            <p class="text-sm">To create AI tools that empower individuals and businesses to achieve more without complexity or privacy concerns.</p>
+                        </div>
+                        <div class="glassmorphism p-4 rounded-2xl">
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-users mr-2" style="color: #f472b6;"></i>
+                                Our Team
+                            </h4>
+                            <p class="text-sm">A diverse group of AI researchers, engineers, and designers passionate about creating ethical and helpful AI solutions.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contact Page -->
+            <section id="contact-page" class="page flex-col items-center justify-center">
+                <h2 class="text-4xl font-bold mb-8 text-center fade-in">Contact Us</h2>
+                <div class="glassmorphism p-8 rounded-3xl w-full max-w-3xl mx-auto fade-in grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4">Get in Touch</h3>
+                        <form id="contact-form" action="https://formspree.io/f/mkgvdgoa" method="POST" class="flex flex-col space-y-4">
+                            <input type="text" name="user_name" id="name-contact" placeholder="Your Name" required class="p-3 rounded-xl outline-none glassmorphism focus:ring-2 focus:ring-purple-500 transition-all">
+                            <input type="email" name="user_email" id="email-contact" placeholder="Your Email" required class="p-3 rounded-xl outline-none glassmorphism focus:ring-2 focus:ring-purple-500 transition-all">
+                            <textarea id="message" name="message" rows="4" placeholder="Your Message" required class="p-3 rounded-xl outline-none glassmorphism focus:ring-2 focus:ring-purple-500 transition-all"></textarea>
+                            <button type="submit" class="py-3 rounded-full btn-gradient font-bold transition">Send Message</button>
+                        </form>
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <h3 class="text-2xl font-bold mb-4">Contact Information</h3>
+                        <div class="space-y-4">
+                             <div class="flex items-start space-x-3">
+                                <i class="fas fa-user mt-1 text-purple-400"></i>
+                                <div>
+                                    <h4 class="font-semibold">Name</h4>
+                                    <p>Bereket Mamuye</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-envelope mt-1 text-purple-400"></i>
+                                <div>
+                                    <h4 class="font-semibold">Email</h4>
+                                    <a href="mailto:bereket1515mamuye@gmail.com" class="hover:underline">bereket1515mamuye@gmail.com</a>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-phone mt-1 text-purple-400"></i>
+                                <div>
+                                    <h4 class="font-semibold">Phone</h4>
+                                    <p>+2519-02-46-86-25</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settings-modal" class="modal fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
+        <div class="glassmorphism p-8 rounded-3xl w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Settings</h3>
+                <button id="close-settings-btn" class="text-gray-400 hover:text-white transition text-2xl" title="Close">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <span>Dark Mode</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="dark-mode-toggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <span>Animations</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="animation-toggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="prompt-preset" class="block font-semibold">System Prompt Presets</label>
+                    <select id="prompt-preset" class="w-full p-2 rounded-lg bg-gray-800 border border-gray-700">
+                        <option value="default">Default</option>
+                        <option value="creative">Creative Writer</option>
+                        <option value="technical">Technical Expert</option>
+                        <option value="friendly">Friendly Assistant</option>
+                        <option value="professional">Professional</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block font-semibold">Chat History</label>
+                    <div class="flex space-x-2">
+                        <button id="export-json-btn" class="py-2 px-4 rounded-full glassmorphism transition text-sm">Export JSON</button>
+                        <button id="export-txt-btn" class="py-2 px-4 rounded-full glassmorphism transition text-sm">Export TXT</button>
+                        <button id="clear-chat-btn" class="py-2 px-4 rounded-full glassmorphism transition text-sm text-red-400 hover:bg-red-500/10">Clear Chat</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm & Status Modals -->
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-[70]">
+        <div class="glassmorphism p-8 rounded-3xl w-full max-w-sm text-center">
+            <h3 class="text-2xl font-bold mb-4">Are you sure?</h3>
+            <p id="confirm-message" class="mb-6">This action cannot be undone.</p>
+            <div class="flex justify-around">
+                <button id="confirm-yes-btn" class="py-2 px-6 rounded-full glassmorphism btn-gradient">Yes</button>
+                <button id="confirm-no-btn" class="py-2 px-6 rounded-full glassmorphism">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contact-status-modal" class="modal fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-[70]">
+        <div class="glassmorphism p-8 rounded-3xl w-full max-w-md text-center">
+            <h3 class="text-2xl font-bold mb-4" id="status-title"></h3>
+            <p id="status-message"></p>
+            <button class="mt-4 py-2 px-6 rounded-full glassmorphism btn-gradient" onclick="hideModal('contact-status-modal')">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- UI Element References ---
+        const body = document.body;
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page');
+        const chatArea = document.getElementById('chat-area');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const fileUpload = document.getElementById('file-upload');
+        const errorContainer = document.getElementById('error-container');
+        const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const contactForm = document.getElementById('contact-form');
+        
+        // Sidebar
+        const openSidebarBtn = document.getElementById('open-sidebar-btn');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const chatHistoryList = document.getElementById('chat-history-list');
+        const chatSearch = document.getElementById('chat-search');
+        const exportAllBtn = document.getElementById('export-all-btn');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+
+        // User & Auth
+        const userIdDisplay = document.getElementById('user-id-display');
+        const userStatus = document.getElementById('user-status');
+        const userAvatar = document.getElementById('user-avatar');
+        const avatarUpload = document.getElementById('avatar-upload');
+        const editUsernameBtn = document.getElementById('edit-username-btn');
+        
+        // Modals
+        const settingsModal = document.getElementById('settings-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+
+        // Settings Modal Elements
+        const openSettingsBtn = document.getElementById('open-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const animationToggle = document.getElementById('animation-toggle');
+        const promptPreset = document.getElementById('prompt-preset');
+        const exportJsonBtn = document.getElementById('export-json-btn');
+        const exportTxtBtn = document.getElementById('export-txt-btn');
+        const clearChatBtn = document.getElementById('clear-chat-btn');
+        
+        // Other Modal Elements
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmYesBtn = document.getElementById('confirm-yes-btn');
+        const confirmNoBtn = document.getElementById('confirm-no-btn');
+        
+        // --- App State ---
+        let isSending = false;
+        let currentChatId = null;
+        let chatHistory = [];
+        let isListening = false;
+        let speechRecognition;
+        let animationEnabled = localStorage.getItem('beki_animations') !== 'false';
+        let allChats = {};
+        let apiKey = "AIzaSyClIv4oL5r01zxPS1XWk1M8tsZlQIkE6sM";
+
+        // --- Helper Functions ---
+        function showModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                body.classList.add('modal-open');
+            }
+        }
+        function hideModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                if (document.querySelectorAll('.modal.flex').length === 0) {
+                    body.classList.remove('modal-open');
+                }
+            }
+        }
+        function showError(message, persist=false) {
+            errorContainer.textContent = message;
+            errorContainer.classList.remove('hidden');
+            if (!persist) setTimeout(()=> { errorContainer.classList.add('hidden'); errorContainer.textContent = ''; }, 5000);
+        }
+        
+        // --- User Profile Functions ---
+        function loadUserProfile() {
+            const savedName = localStorage.getItem('beki_username');
+            const savedAvatar = localStorage.getItem('beki_avatar');
+            userIdDisplay.textContent = savedName || 'Guest';
+            userAvatar.src = savedAvatar || `https://placehold.co/40x40/9b5cf6/FFFFFF?text=${(savedName || 'G')[0]}`;
+        }
+        
+        function saveUserProfile({ name, avatar }) {
+            if (name) localStorage.setItem('beki_username', name);
+            if (avatar) localStorage.setItem('beki_avatar', avatar);
+            loadUserProfile();
+        }
+
+
+        // --- LocalStorage Functions ---
+        function loadAllChats() {
+            try {
+                const savedChats = localStorage.getItem('beki_chats');
+                allChats = savedChats ? JSON.parse(savedChats) : {};
+                renderChatHistoryList();
+            } catch (e) {
+                console.error("Error loading chats from localStorage:", e);
+                allChats = {};
+            }
+        }
+
+        function saveAllChats() {
+            try {
+                localStorage.setItem('beki_chats', JSON.stringify(allChats));
+            } catch (e) {
+                console.error("Error saving chats to localStorage:", e);
+                showError("Failed to save chat history.");
+            }
+        }
+
+        function createNewChat() {
+            const timestamp = Date.now();
+            currentChatId = `chat_${timestamp}`;
+            
+            allChats[currentChatId] = {
+                id: currentChatId,
+                title: "New Chat",
+                createdAt: timestamp,
+                messages: []
+            };
+            
+            saveAllChats();
+            switchChat(currentChatId);
+            renderChatHistoryList();
+        }
+
+        function saveMessageToStorage(message, type, filename = null) {
+            if (!currentChatId || !allChats[currentChatId]) {
+                createNewChat();
+            }
+            
+            const messageObj = {
+                text: message,
+                type: type,
+                filename: filename,
+                timestamp: Date.now()
+            };
+            
+            allChats[currentChatId].messages.push(messageObj);
+            
+            // Update chat title if it's the first user message
+            if (type === 'user' && allChats[currentChatId].title === "New Chat") {
+                allChats[currentChatId].title = message.substring(0, 30);
+            }
+            
+            saveAllChats();
+            renderChatHistoryList();
+        }
+
+        function switchChat(chatId) {
+            currentChatId = chatId;
+            chatHistory = allChats[chatId]?.messages || [];
+            
+            document.querySelectorAll('.chat-history-item').forEach(i => i.classList.remove('active'));
+            const node = document.querySelector(`[data-chat-id="${chatId}"]`);
+            if (node) node.classList.add('active');
+            
+            renderChatHistory();
+        }
+        
+        function renameChat(chatId, newTitle) {
+            if (allChats[chatId] && newTitle) {
+                allChats[chatId].title = newTitle;
+                saveAllChats();
+                renderChatHistoryList();
+            }
+        }
+
+        function deleteChat(chatId) {
+            if (allChats[chatId]) {
+                delete allChats[chatId];
+                saveAllChats();
+                
+                if (currentChatId === chatId) {
+                    // Switch to the most recent chat or create a new one
+                    const remainingChats = Object.values(allChats).sort((a,b) => b.createdAt - a.createdAt);
+                    if (remainingChats.length > 0) {
+                        switchChat(remainingChats[0].id);
+                    } else {
+                        createNewChat();
+                    }
+                }
+                
+                renderChatHistoryList();
+            }
+        }
+
+        function clearAllChats() {
+            allChats = {};
+            saveAllChats();
+            createNewChat(); // Start with a fresh chat
+        }
+
+        function exportChat(format) {
+            if (!currentChatId || !allChats[currentChatId]) {
+                showError("No chat to export");
+                return;
+            }
+            
+            let data, filename, type;
+            
+            if (format === 'json') {
+                data = JSON.stringify(allChats[currentChatId], null, 2);
+                filename = `beki-chat-${currentChatId}.json`;
+                type = 'application/json';
+            } else {
+                data = allChats[currentChatId].messages
+                    .map(msg => `${msg.type === 'user' ? 'You' : 'BEKI'}: ${msg.text}`)
+                    .join('\n\n');
+                filename = `beki-chat-${currentChatId}.txt`;
+                type = 'text/plain';
+            }
+            
+            const blob = new Blob([data], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportAllChats() {
+            if (Object.keys(allChats).length === 0) {
+                showError("No chats to export");
+                return;
+            }
+            
+            const data = JSON.stringify(allChats, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `beki-all-chats-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- UI Rendering ---
+        function renderChatHistoryList() {
+            const searchTerm = chatSearch.value.toLowerCase();
+            chatHistoryList.innerHTML = '';
+            
+            if (Object.keys(allChats).length === 0) {
+                chatHistoryList.innerHTML = '<div class="text-xs text-center text-gray-500 p-4">No chats yet. Start a new one!</div>';
+                return;
+            }
+            
+            const sortedChats = Object.values(allChats).sort((a, b) => b.createdAt - a.createdAt);
+            const filteredChats = sortedChats.filter(chat => chat.title.toLowerCase().includes(searchTerm));
+            
+            filteredChats.forEach(chat => {
+                const el = document.createElement('div');
+                el.className = 'chat-history-item cursor-pointer flex justify-between items-center group';
+                el.dataset.chatId = chat.id;
+
+                const titleContainer = document.createElement('div');
+                titleContainer.className = 'flex-grow truncate';
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = chat.title;
+                titleSpan.title = chat.title;
+                titleContainer.appendChild(titleSpan);
+                el.appendChild(titleContainer);
+
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'action-button text-xs';
+                editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = chat.title;
+                    input.className = 'w-full bg-transparent border-b border-purple-400 outline-none';
+                    titleContainer.innerHTML = '';
+                    titleContainer.appendChild(input);
+                    input.focus();
+
+                    const save = () => {
+                        renameChat(chat.id, input.value);
+                    };
+
+                    input.onblur = save;
+                    input.onkeydown = (ev) => {
+                        if (ev.key === 'Enter') save();
+                        if (ev.key === 'Escape') renderChatHistoryList(); // Re-render to cancel
+                    };
+                };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'action-button text-xs';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    confirmMessage.textContent = "Are you sure you want to delete this chat? This cannot be undone.";
+                    showModal('confirm-modal');
+                    confirmYesBtn.onclick = () => {
+                        deleteChat(chat.id);
+                        hideModal('confirm-modal');
+                    };
+                };
+                
+                buttonsDiv.appendChild(editBtn);
+                buttonsDiv.appendChild(deleteBtn);
+                el.appendChild(buttonsDiv);
+                el.onclick = () => switchChat(chat.id);
+                
+                if (chat.id === currentChatId) {
+                    el.classList.add('active');
+                }
+                
+                chatHistoryList.appendChild(el);
+            });
+        }
+
+        function renderChatHistory() {
+            chatArea.innerHTML = '';
+            
+            if (!currentChatId || !allChats[currentChatId] || allChats[currentChatId].messages.length === 0) {
+                addMessageToUI("Hello! I am BEKI AI. How can I assist you today?", 'ai');
+                return;
+            }
+            
+            allChats[currentChatId].messages.forEach(msg => {
+                if (msg.type === 'user' && msg.filename && msg.filename.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                    addMessageWithImageToUI(msg.text, msg.filename, 'user');
+                } else {
+                    addMessageToUI(msg.text, msg.type, msg.filename);
+                }
+            });
+            
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator flex justify-start';
+            typingIndicator.innerHTML = '<div class="ai-bubble"><span></span><span></span><span></span></div>';
+            chatArea.appendChild(typingIndicator);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return typingIndicator;
+        }
+        
+        function addMessageToUI(text, type) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex w-full ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type === 'user' ? 'user-bubble' : 'ai-bubble'} relative`;
+            bubble.innerHTML = marked.parse(text);
+            wrapper.appendChild(bubble);
+            chatArea.appendChild(wrapper);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            Prism.highlightAllUnder(chatArea);
+            return wrapper;
+        }
+
+        function addMessageWithImageToUI(text, imageUrl, type) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex w-full ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type === 'user' ? 'user-bubble' : 'ai-bubble'} relative`;
+            bubble.innerHTML = `<p class="mb-2">${text}</p><img src="${imageUrl}" class="rounded-lg max-w-full h-auto" alt="User upload">`;
+            wrapper.appendChild(bubble);
+            chatArea.appendChild(wrapper);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return bubble;
+        }
+
+        // --- Gemini API Integration ---
+        async function sendPromptToGemini(userPrompt, file = null) {
+            if (isSending) return;
+            isSending = true;
+
+            // Add user message to UI and storage
+            if (file && file.url) {
+                addMessageWithImageToUI(userPrompt, file.url, 'user');
+            } else {
+                addMessageToUI(userPrompt, 'user');
+            }
+            saveMessageToStorage(userPrompt, 'user');
+
+            chatInput.value = '';
+            const typingIndicator = addTypingIndicator();
+
+            try {
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+                
+                const contents = [{
+                    role: "user",
+                    parts: [{ text: userPrompt }]
+                }];
+                
+                if (file) {
+                    contents[0].parts.push({
+                        inlineData: {
+                            mimeType: file.type,
+                            data: file.base64
+                        }
+                    });
+                }
+                
+                const payload = {
+                    contents: contents,
+                    generationConfig: {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 1024,
+                    }
+                };
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({ error: { message: 'An unknown API error occurred.' } }));
+                    throw new Error(`API Error: ${response.status} - ${errData.error?.message || 'Unknown error'}`);
+                }
+                
+                const result = await response.json();
+                const aiText = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't get a response at this time.";
+                
+                addMessageToUI(aiText, 'ai');
+                saveMessageToStorage(aiText, 'ai');
+
+            } catch (err) {
+                console.error("Gemini API error:", err);
+                const errorMsg = `An error occurred: ${err.message}`;
+                addMessageToUI(errorMsg, 'ai');
+                saveMessageToStorage(errorMsg, 'ai');
+                showError(errorMsg, true);
+            } finally {
+                isSending = false;
+                if(typingIndicator) typingIndicator.remove();
+            }
+        }
+
+        // --- Event Listeners ---
+        function initializeEventListeners() {
+            // Navigation
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = link.dataset.page;
+                    navigateTo(pageId);
+                });
+            });
+
+            // Theme toggle
+            toggleThemeBtn.addEventListener('click', () => {
+                body.classList.toggle('light-mode');
+                localStorage.setItem('beki_theme', body.classList.contains('light-mode') ? 'light' : 'dark');
+            });
+
+            // Dark mode toggle in settings
+            darkModeToggle.addEventListener('change', () => {
+                body.classList.toggle('light-mode');
+                localStorage.setItem('beki_theme', body.classList.contains('light-mode') ? 'light' : 'dark');
+            });
+
+            // Sidebar toggle
+            openSidebarBtn.addEventListener('click', () => {
+                body.classList.toggle('sidebar-open');
+                body.classList.toggle('sidebar-closed');
+            });
+            
+            closeSidebarBtn.addEventListener('click', () => {
+                body.classList.toggle('sidebar-open');
+                body.classList.toggle('sidebar-closed');
+            });
+
+            // New chat button
+            newChatBtn.addEventListener('click', createNewChat);
+
+            // Chat search
+            chatSearch.addEventListener('input', () => {
+                renderChatHistoryList();
+            });
+
+            // Chat input
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendPromptToGemini(chatInput.value.trim());
+                }
+            });
+
+            // Send button
+            sendBtn.addEventListener('click', () => {
+                const prompt = chatInput.value.trim();
+                if (prompt) sendPromptToGemini(prompt);
+            });
+            
+            // --- User Profile Event Listeners ---
+            editUsernameBtn.addEventListener('click', () => {
+                const currentName = userIdDisplay.textContent;
+                const parent = userIdDisplay.parentElement;
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentName === 'Guest' ? '' : currentName;
+                input.className = 'bg-transparent border-b border-purple-400 outline-none text-sm w-full';
+                
+                userIdDisplay.classList.add('hidden');
+                parent.insertBefore(input, userIdDisplay);
+                input.focus();
+                
+                const saveName = () => {
+                    const newName = input.value.trim();
+                    saveUserProfile({ name: newName || 'Guest' });
+                    parent.removeChild(input);
+                    userIdDisplay.classList.remove('hidden');
+                };
+
+                input.addEventListener('blur', saveName);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        input.blur();
+                    }
+                });
+            });
+            
+            avatarUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        saveUserProfile({ avatar: event.target.result });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+
+            // File upload
+            fileUpload.addEventListener('change', (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                if (f.size > 4 * 1024 * 1024) { 
+                    showError("File size cannot exceed 4MB."); 
+                    return; 
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const fileContent = ev.target.result;
+                    const base64 = fileContent.split(',')[1];
+                    
+                    if (f.type.startsWith('image/')) {
+                        sendPromptToGemini("Describe or analyze this image.", { 
+                            url: fileContent, 
+                            base64: base64, 
+                            type: f.type, 
+                            name: f.name 
+                        });
+                    } else {
+                        // For text files, read the content
+                        const textReader = new FileReader();
+                        textReader.onload = (evt) => {
+                            const textContent = evt.target.result;
+                            const prompt = `I've uploaded a file named '${f.name}'. Content:\n\n\`\`\`\n${textContent}\n\`\`\`\n\nPlease analyze it.`;
+                            sendPromptToGemini(prompt, null);
+                        };
+                        textReader.readAsText(f);
+                    }
+                };
+                
+                if (f.type.startsWith('image/')) {
+                    reader.readAsDataURL(f);
+                }
+            });
+
+            // Settings modal
+            openSettingsBtn.addEventListener('click', () => showModal('settings-modal'));
+            closeSettingsBtn.addEventListener('click', () => hideModal('settings-modal'));
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) hideModal('settings-modal');
+            });
+
+            // Clear chat button
+            clearChatBtn.addEventListener('click', () => {
+                if (chatHistory.length > 0) {
+                    confirmMessage.textContent = "Are you sure you want to clear the current chat?";
+                    showModal('confirm-modal');
+                    confirmYesBtn.onclick = () => {
+                        if (currentChatId && allChats[currentChatId]) {
+                            allChats[currentChatId].messages = [];
+                            saveAllChats();
+                            renderChatHistory();
+                        }
+                        hideModal('confirm-modal');
+                    };
+                    confirmNoBtn.onclick = () => hideModal('confirm-modal');
+                }
+            });
+
+            // Export buttons
+            exportJsonBtn.addEventListener('click', () => exportChat('json'));
+            exportTxtBtn.addEventListener('click', () => exportChat('txt'));
+            exportAllBtn.addEventListener('click', exportAllChats);
+
+            // Clear all chats button
+            clearAllBtn.addEventListener('click', () => {
+                if (Object.keys(allChats).length > 0) {
+                    confirmMessage.textContent = "Are you sure you want to delete ALL chats? This cannot be undone.";
+                    showModal('confirm-modal');
+                    confirmYesBtn.onclick = () => {
+                        clearAllChats();
+                        hideModal('confirm-modal');
+                    };
+                }
+            });
+
+            // Contact form
+            contactForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const sendButton = contactForm.querySelector('button[type="submit"]');
+                sendButton.disabled = true;
+                sendButton.textContent = 'Sending...';
+
+                const formData = new FormData(contactForm);
+
+                try {
+                    const response = await fetch(contactForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        statusTitle.textContent = "Message Sent!";
+                        statusMessage.textContent = "Thank you for your message. I'll get back to you soon.";
+                        showModal('contact-status-modal');
+                        contactForm.reset();
+                    } else {
+                        const data = await response.json();
+                        if (Object.hasOwn(data, 'errors')) {
+                           throw new Error(data["errors"].map(error => error["message"]).join(", "));
+                        } else {
+                           throw new Error('Form submission failed.');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Formspree Error:', error);
+                    statusTitle.textContent = "Error";
+                    statusMessage.textContent = `Sorry, something went wrong: ${error.message}`;
+                    showModal('contact-status-modal');
+                } finally {
+                     sendButton.disabled = false;
+                     sendButton.textContent = 'Send Message';
+                }
+            });
+
+
+            // Animation toggle
+            animationToggle.checked = animationEnabled;
+            animationToggle.addEventListener('change', () => {
+                animationEnabled = animationToggle.checked;
+                localStorage.setItem('beki_animations', animationEnabled);
+            });
+
+
+            // Close modals when clicking outside
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) hideModal(modal.id);
+                });
+            });
+
+            // Close confirm modal with No button
+            confirmNoBtn.addEventListener('click', () => hideModal('confirm-modal'));
+        }
+
+        // --- Page Navigation ---
+        function navigateTo(pageId) {
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+            
+            // Update URL hash
+            window.location.hash = pageId.replace('-page', '');
+            
+            // Close sidebar on mobile when navigating
+            if (window.innerWidth < 768) {
+                body.classList.remove('sidebar-open');
+                body.classList.add('sidebar-closed');
+            }
+        }
+
+        // --- Initialization ---
+        function initializeApp() {
+            // Load saved theme
+            const savedTheme = localStorage.getItem('beki_theme');
+            if (savedTheme === 'light') {
+                body.classList.add('light-mode');
+                darkModeToggle.checked = false;
+            } else {
+                darkModeToggle.checked = true;
+            }
+            
+            // Load user profile
+            loadUserProfile();
+
+            // Load animation preference
+            animationEnabled = localStorage.getItem('beki_animations') !== 'false';
+            
+            // Load all chats from localStorage
+            loadAllChats();
+            
+            // If no chats exist, create one
+            if (Object.keys(allChats).length === 0) {
+                createNewChat();
+            } else {
+                 const latestChat = Object.values(allChats).sort((a,b) => b.createdAt - a.createdAt)[0];
+                 switchChat(latestChat.id);
+            }
+            
+            // Initialize event listeners
+            initializeEventListeners();
+            
+            // Start with home page or page from URL hash
+            const hash = window.location.hash.replace('#', '');
+            const pageId = hash ? `${hash}-page` : 'home-page';
+            if (document.getElementById(pageId)) {
+               navigateTo(pageId);
+            } else {
+               navigateTo('home-page');
+            }
+            
+            // Initialize intersection observer for fade-in animations
+            if (animationEnabled) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('scrolled-into-view');
+                        }
+                    });
+                }, { threshold: 0.1 });
+                
+                document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+            } else {
+                document.querySelectorAll('.fade-in').forEach(el => el.classList.add('scrolled-into-view'));
+            }
+            
+            // Set initial sidebar state for mobile
+            if (window.innerWidth <= 768) {
+                body.classList.remove('sidebar-open');
+                body.classList.add('sidebar-closed');
+            }
+        }
+
+        // Start the app
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
+
